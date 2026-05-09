@@ -3,13 +3,14 @@ $ErrorActionPreference = "Stop"
 $repo = "shishiro26/Kubera"
 
 $release = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest"
-$version = $release.tag_name
+$tag = $release.tag_name
+$version = $tag.TrimStart('v')
 
 $arch = "amd64"
 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { $arch = "arm64" }
 
 $asset = "kubera_${version}_windows_${arch}.zip"
-$url = "https://github.com/$repo/releases/download/$version/$asset"
+$url = "https://github.com/$repo/releases/download/$tag/$asset"
 
 $installDir = "$env:LOCALAPPDATA\kubera"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
@@ -26,4 +27,4 @@ if ($currentPath -notlike "*$installDir*") {
     [Environment]::SetEnvironmentVariable("PATH", "$currentPath;$installDir", "User")
 }
 
-Write-Host "kubera $version installed. Restart your terminal and run: kubera"
+Write-Host "kubera v$version installed. Restart your terminal and run: kubera"
