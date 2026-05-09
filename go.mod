@@ -3,8 +3,10 @@ module github.com/shishiro26/kubera
 go 1.25.3
 
 require (
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.1
+	github.com/pquerna/otp v1.5.0
 	golang.org/x/crypto v0.51.0
 )
 

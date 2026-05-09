@@ -20,7 +20,7 @@ func main() {
 	case "init":
 		err = commands.Init()
 	case "add":
-		fmt.Print("Adding new entry... ")
+		err = commands.Add()
 	case "list":
 		fmt.Print("OPening vault browser... ")
 	case "get":
@@ -59,6 +59,7 @@ func showHelp() {
 		{"edit <site>", "Update entry", "Change username or password for a site"},
 		{"delete <site>", "Remove entry", "Delete an entry with confirmation prompt"},
 		{"install", "System install", "Add kubera to PATH and optional Windows startup"},
+		{"help", "Show this help", "Usage: kubera <command> [args]"},
 	}
 
 	fmt.Println(ui.HeaderStyle.Render("  COMMANDS"))
