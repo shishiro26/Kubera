@@ -8,10 +8,28 @@
 - What did I learn from this:
   - How to use Argon2ID and AES-256-GCM in Go.
 
-- How to run this Project:
-  - `go build -o kubera.exe .` to build the project in the root directory.
-  - once downloaded run .\kubera.exe to start the CLI.
-  - `kubera help` to see the available commands..
+## Installation
+
+**Windows**
+
+```powershell
+irm https://raw.githubusercontent.com/shishiro26/Kubera/main/install.ps1 | iex
+```
+
+**Linux / macOS**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/shishiro26/Kubera/main/install.sh | sh
+```
+
+**Windows (Scoop)**
+
+```sh
+scoop bucket add kubera https://github.com/shishiro26/scoop-kubera
+scoop install kubera
+```
+
+Once installed, run `kubera help` to see available commands.
 
 ## Build from source
 
@@ -19,5 +37,5 @@
 git clone https://github.com/shishiro26/Kubera.git
 cd Kubera
 go build -o kubera .
-./kubera install
+./kubera help
 ```
