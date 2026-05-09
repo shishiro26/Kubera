@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/shishiro26/kubera/commands"
 	"github.com/shishiro26/kubera/ui"
 )
 
@@ -17,7 +18,7 @@ func main() {
 	cmd := os.Args[1]
 	switch cmd {
 	case "init":
-		fmt.Print("Initializing vault... ")
+		err = commands.Init()
 	case "add":
 		fmt.Print("Adding new entry... ")
 	case "list":
