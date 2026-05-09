@@ -27,6 +27,7 @@ func init() {
 
 func SaveTOTPSecret(secret string) error {
 	dir := GetVaultDir()
+	// giving only write permission to the user for the vault directory and file for security
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func Load(password string) ([]models.Entry, error) {
 
 	var vault models.Vault
 	if err := json.Unmarshal(data, &vault); err != nil {
-		return nil, fmt.Errorf("corrupted vault file: ")
+		return nil, fmt.Errorf("corrupted vault file: %w", err)
 	}
 
 	plainText, err := crypto.Decrypt(vault.Salt, vault.CipherText, password)

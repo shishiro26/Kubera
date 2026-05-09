@@ -22,18 +22,16 @@ func main() {
 	case "add":
 		err = commands.Add()
 	case "list":
-		fmt.Print("OPening vault browser... ")
+		err = commands.List()
 	case "get":
 		requireArg(cmd, 3)
-		fmt.Print("Fetching credentials for " + os.Args[2] + "... ")
+		err = commands.Get(os.Args[2])
 	case "edit", "update":
 		requireArg(cmd, 3)
-		fmt.Print("Updating entry for " + os.Args[2] + "... ")
+		err = commands.Edit(os.Args[2])
 	case "delete", "remove", "rm":
 		requireArg(cmd, 3)
-		fmt.Print("Deleting entry for " + os.Args[2] + "... ")
-	case "install":
-		fmt.Print("Installing kubera... ")
+		err = commands.Delete(os.Args[2])
 	case "help", "--help", "-h", "man":
 		showHelp()
 	default:
@@ -56,9 +54,8 @@ func showHelp() {
 		{"add", "Add entry", "Add a new password entry interactively"},
 		{"list", "Browse vault", "Interactive browser — navigate, view, add, edit, delete"},
 		{"get <site>", "Fetch credentials", "Display username & password for a site"},
-		{"edit <site>", "Update entry", "Change username or password for a site"},
+		{"edit <site>", "Update entry", "Change username, password, or TOTP for a site"},
 		{"delete <site>", "Remove entry", "Delete an entry with confirmation prompt"},
-		{"install", "System install", "Add kubera to PATH and optional Windows startup"},
 		{"help", "Show this help", "Usage: kubera <command> [args]"},
 	}
 

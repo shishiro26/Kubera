@@ -29,7 +29,11 @@ func Encrypt(plainText []byte, password string) (saltHex string, cipherText []by
 	}
 
 	key, _ := DeriveKey(password, salt)
+
 	block, err := aes.NewCipher(key)
+	if err != nil {
+		return
+	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
