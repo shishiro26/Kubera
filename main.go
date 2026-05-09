@@ -8,6 +8,13 @@ import (
 	"github.com/shishiro26/kubera/ui"
 )
 
+// Injected at build time by GoReleaser via ldflags.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		showHelp()
@@ -32,6 +39,10 @@ func main() {
 	case "delete", "remove", "rm":
 		requireArg(cmd, 3)
 		err = commands.Delete(os.Args[2])
+	case "install":
+		err = commands.Install()
+	case "version", "--version", "-v":
+		fmt.Printf("kubera %s (commit %s, built %s)\n", version, commit, date)
 	case "help", "--help", "-h", "man":
 		showHelp()
 	default:
@@ -56,6 +67,8 @@ func showHelp() {
 		{"get <site>", "Fetch credentials", "Display username & password for a site"},
 		{"edit <site>", "Update entry", "Change username, password, or TOTP for a site"},
 		{"delete <site>", "Remove entry", "Delete an entry with confirmation prompt"},
+		{"install", "System install", "Copy kubera to PATH and make it available everywhere"},
+		{"version", "Show version", fmt.Sprintf("Current build: %s (%s)", version, commit)},
 		{"help", "Show this help", "Usage: kubera <command> [args]"},
 	}
 
@@ -73,14 +86,6 @@ func showHelp() {
 
 	vaultPath := ui.ValueStyle.Render("~/.kubera/vault.enc")
 	fmt.Println(ui.SubtleStyle.Render("  Vault ") + ui.LabelStyle.Render("→ ") + vaultPath)
-
-	fmt.Println()
-
-	fmt.Println(
-		ui.HelpStyle.Render("  Run ") +
-			ui.BadgeGoldStyle.Render(" kubera <command> --help ") +
-			ui.HelpStyle.Render(" for detailed usage."),
-	)
 
 	fmt.Println()
 }
