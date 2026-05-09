@@ -12,6 +12,39 @@ func main() {
 		showHelp()
 		return
 	}
+	var err error
+
+	cmd := os.Args[1]
+	switch cmd {
+	case "init":
+		fmt.Print("Initializing vault... ")
+	case "add":
+		fmt.Print("Adding new entry... ")
+	case "list":
+		fmt.Print("OPening vault browser... ")
+	case "get":
+		requireArg(cmd, 3)
+		fmt.Print("Fetching credentials for " + os.Args[2] + "... ")
+	case "edit", "update":
+		requireArg(cmd, 3)
+		fmt.Print("Updating entry for " + os.Args[2] + "... ")
+	case "delete", "remove", "rm":
+		requireArg(cmd, 3)
+		fmt.Print("Deleting entry for " + os.Args[2] + "... ")
+	case "install":
+		fmt.Print("Installing kubera... ")
+	case "help", "--help", "-h", "man":
+		showHelp()
+	default:
+		ui.PrintError("Unknown command: " + cmd)
+		showHelp()
+		os.Exit(1)
+	}
+
+	if err != nil {
+		ui.PrintError(err.Error())
+		os.Exit(1)
+	}
 }
 
 func showHelp() {
@@ -51,4 +84,11 @@ func showHelp() {
 	)
 
 	fmt.Println()
+}
+
+func requireArg(cmd string, minArgs int) {
+	if len(os.Args) < minArgs {
+		ui.PrintError(fmt.Sprintf("Usage: kubera %s <site>", cmd))
+		os.Exit(1)
+	}
 }

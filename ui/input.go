@@ -30,6 +30,36 @@ func ReadLine(prompt string) string {
 	return strings.TrimSpace(text)
 }
 
+func ReadLineOptional(prompt string) string {
+	fmt.Print(SubtleStyle.Render(prompt))
+	text, _ := stdinReader.ReadString('\n')
+	return strings.TrimSpace(text)
+}
+
+func Confirm(prompt string) bool {
+	fmt.Print(WarningStyle.Render(prompt + " [y/N]: "))
+	text, _ := stdinReader.ReadString('\n')
+	return strings.ToLower(strings.TrimSpace(text)) == "y"
+}
+
+func PrintSuccess(msg string) {
+	fmt.Println(SuccessStyle.Render("  ❯❯  " + msg))
+}
+
+func PrintError(msg string) {
+	fmt.Fprintln(os.Stderr, ErrorStyle.Render("  !!  "+msg))
+}
+
+func PrintWarning(msg string) {
+	fmt.Println(WarningStyle.Render("  ~~  " + msg))
+}
+
+func PrintTitle(title string) {
+	fmt.Println()
+	fmt.Println(TitleStyle.Render("  " + title + "  "))
+	fmt.Println()
+}
+
 func PrintBanner() {
 	art := []string{
 		"██╗  ██╗██╗   ██╗██████╗ ███████╗██████╗  █████╗ ",
