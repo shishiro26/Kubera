@@ -22,13 +22,6 @@ irm https://raw.githubusercontent.com/shishiro26/Kubera/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/shishiro26/Kubera/main/install.sh | sh
 ```
 
-**Windows (Scoop)**
-
-```sh
-scoop bucket add kubera https://github.com/shishiro26/scoop-kubera
-scoop install kubera
-```
-
 Once installed, run `kubera help` to see available commands.
 
 ## Build from source

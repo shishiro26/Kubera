@@ -46,13 +46,6 @@ changelog:
 snapshot:
   version_template: "{{.Tag}}-dev"
 
-scoops:
-  - repository:
-      owner: shishiro26
-      name: scoop-kubera
-    homepage: "https://github.com/shishiro26/Kubera"
-    description: "Kubera CLI"
-
 release:
   github:
     owner: shishiro26
