@@ -20,12 +20,13 @@ const (
 )
 
 type ListModel struct {
-	entries  []models.Entry
-	cursor   int
-	selected int
-	mode     ListMode
-	action   string
-	status   string
+	entries   []models.Entry
+	cursor    int
+	selected  int
+	mode      ListMode
+	action    string
+	status    string
+	termWidth int
 }
 
 func NewListModel(entries []models.Entry, startCursor int, status string) ListModel {
@@ -44,6 +45,9 @@ func (m ListModel) Init() tea.Cmd { return nil }
 
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.termWidth = msg.Width
+		return m, nil
 	case tea.KeyMsg:
 		switch m.mode {
 		case modeList:
@@ -143,19 +147,38 @@ func (m ListModel) viewTitle() string {
 	}
 	artBlock := strings.Join(artLines, "\n")
 
+	totpCount := 0
+	for _, e := range m.entries {
+		if e.TOTP != "" {
+			totpCount++
+		}
+	}
 	counter := lipgloss.NewStyle().Foreground(ColorAccent).Render("◆") +
 		lipgloss.NewStyle().Foreground(ColorMuted).Render(fmt.Sprintf("  %d entries", len(m.entries)))
+	if totpCount > 0 {
+		counter += lipgloss.NewStyle().Foreground(ColorSubtle).Render("  ·  ") +
+			lipgloss.NewStyle().Foreground(ColorSuccess).Render(fmt.Sprintf("%d with 2FA", totpCount))
+	}
 
 	inner := lipgloss.NewStyle().
 		Align(lipgloss.Center).
 		Render(artBlock + "\n" + counter)
 
-	return lipgloss.NewStyle().
+	style := lipgloss.NewStyle().
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(0, 3).
-		MarginBottom(1).
-		Render(inner)
+		MarginBottom(1)
+
+	if m.termWidth > 0 {
+		titleWidth := lipgloss.Width(style.Render(inner))
+		leftPad := (m.termWidth - titleWidth) / 2
+		if leftPad < 0 {
+			leftPad = 0
+		}
+		return style.MarginLeft(leftPad).Render(inner)
+	}
+	return style.Render(inner)
 }
 
 func (m ListModel) View() string {
@@ -168,7 +191,14 @@ func (m ListModel) View() string {
 	case modeList:
 		b.WriteString(m.viewList())
 		if m.status != "" {
-			b.WriteString("\n" + SuccessStyle.Render("  ❯❯  "+m.status))
+			statusBox := lipgloss.NewStyle().
+				BorderStyle(lipgloss.RoundedBorder()).
+				BorderForeground(ColorSuccess).
+				Padding(0, 2).
+				MarginLeft(2).
+				MarginTop(1).
+				Render(SuccessStyle.Render("  ❯❯  " + m.status))
+			b.WriteString("\n" + statusBox)
 		}
 		b.WriteString("\n\n" + m.viewHelp())
 
@@ -180,6 +210,7 @@ func (m ListModel) View() string {
 	case modeConfirmDelete:
 		b.WriteString(m.viewList())
 		if m.selected < len(m.entries) {
+			e := m.entries[m.selected]
 			warning := lipgloss.NewStyle().
 				BorderStyle(lipgloss.RoundedBorder()).
 				BorderForeground(ColorError).
@@ -188,7 +219,11 @@ func (m ListModel) View() string {
 				MarginTop(1).
 				Render(
 					WarningStyle.Render("  !!  ") +
-						ValueStyle.Render(fmt.Sprintf("Delete '%s'? ", m.entries[m.selected].Site)) +
+						ValueStyle.Render("Delete ") +
+						LabelStyle.Render(e.Username) +
+						SubtleStyle.Render(" @ ") +
+						LabelStyle.Render(e.Site) +
+						ValueStyle.Render("?  ") +
 						LabelStyle.Render("y") +
 						SubtleStyle.Render(" confirm   ") +
 						LabelStyle.Render("n") +
@@ -218,27 +253,36 @@ func (m ListModel) viewList() string {
 
 	var b strings.Builder
 
-	siteHeader := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render(fmt.Sprintf("  %-34s", "SITE"))
-	userHeader := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render(fmt.Sprintf("%-28s", "USERNAME"))
-	b.WriteString(siteHeader + userHeader + "\n")
-	b.WriteString(lipgloss.NewStyle().Foreground(ColorSubtle).Render("  "+strings.Repeat("─", 64)) + "\n")
+	siteHeader := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render(fmt.Sprintf("  %-32s", "SITE"))
+	userHeader := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render(fmt.Sprintf("%-24s", "USERNAME"))
+	otpHeader := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render(" 2FA")
+	b.WriteString(siteHeader + userHeader + otpHeader + "\n")
+	b.WriteString(lipgloss.NewStyle().Foreground(ColorSubtle).Render("  "+strings.Repeat("─", 62)) + "\n")
 
 	for i, e := range m.entries {
-		site := truncate(e.Site, 32)
-		user := truncate(e.Username, 26)
+		site := truncate(e.Site, 30)
+		user := truncate(e.Username, 22)
 
 		if i == m.cursor {
 			cursor := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render("❯ ")
-			siteCol := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(fmt.Sprintf("%-34s", site))
-			userCol := lipgloss.NewStyle().Foreground(ColorOnSurface).Render(fmt.Sprintf("%-28s", user))
+			siteCol := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(fmt.Sprintf("%-32s", site))
+			userCol := lipgloss.NewStyle().Foreground(ColorOnSurface).Render(fmt.Sprintf("%-24s", user))
+			badge := "    "
+			if e.TOTP != "" {
+				badge = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render(" ◆  ")
+			}
 			row := lipgloss.NewStyle().
 				Background(ColorHighlight).
-				Render(cursor + siteCol + userCol)
+				Render(cursor + siteCol + userCol + badge)
 			b.WriteString(row + "\n")
 		} else {
-			siteCol := lipgloss.NewStyle().Foreground(ColorOnSurface).Render(fmt.Sprintf("  %-34s", site))
-			userCol := lipgloss.NewStyle().Foreground(ColorMuted).Render(fmt.Sprintf("%-28s", user))
-			b.WriteString(siteCol + userCol + "\n")
+			siteCol := lipgloss.NewStyle().Foreground(ColorOnSurface).Render(fmt.Sprintf("  %-32s", site))
+			userCol := lipgloss.NewStyle().Foreground(ColorMuted).Render(fmt.Sprintf("%-24s", user))
+			badge := ""
+			if e.TOTP != "" {
+				badge = lipgloss.NewStyle().Foreground(ColorSuccess).Render(" ◆")
+			}
+			b.WriteString(siteCol + userCol + badge + "\n")
 		}
 	}
 
@@ -251,9 +295,8 @@ func (m ListModel) viewDetail() string {
 	}
 	e := m.entries[m.cursor]
 
-	siteRow := LabelStyle.Render("  Site      ") +
-		lipgloss.NewStyle().Foreground(ColorAccent).Render("◆  ") +
-		ValueStyle.Render(e.Site)
+	siteHeader := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("  " + e.Site)
+	sep := lipgloss.NewStyle().Foreground(ColorSubtle).Render("  " + strings.Repeat("─", 40))
 
 	userRow := LabelStyle.Render("  Username  ") +
 		lipgloss.NewStyle().Foreground(ColorAccent).Render("◆  ") +
@@ -263,14 +306,14 @@ func (m ListModel) viewDetail() string {
 		lipgloss.NewStyle().Foreground(ColorAccent).Render("◆  ") +
 		lipgloss.NewStyle().Foreground(ColorWarning).Render(e.Password)
 
-	rows := []string{siteRow, userRow, passRow}
+	rows := []string{siteHeader, sep, userRow, passRow}
 
 	if e.TOTP != "" {
 		code, err := totp.GenerateCode(e.TOTP, time.Now())
 		if err == nil {
 			totpRow := LabelStyle.Render("  TOTP      ") +
-				lipgloss.NewStyle().Foreground(ColorAccent).Render("◆  ") +
-				lipgloss.NewStyle().Foreground(ColorSuccess).Render(code)
+				lipgloss.NewStyle().Foreground(ColorSuccess).Render("◆  ") +
+				lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render(code)
 			rows = append(rows, totpRow)
 		}
 	}
@@ -293,7 +336,7 @@ func (m ListModel) viewDetail() string {
 
 	return lipgloss.NewStyle().
 		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(ColorPrimary).
+		BorderForeground(ColorAccent).
 		MarginLeft(2).
 		MarginTop(1).
 		Padding(1, 2).
