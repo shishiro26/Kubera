@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,14 +127,14 @@ func Add() error {
 		return fmt.Errorf("site cannot be empty")
 	}
 
+	username := ui.ReadLine("Username / Email:    ")
+
 	for _, e := range entries {
-		if strings.EqualFold(e.Site, site) {
-			ui.PrintError(fmt.Sprintf("'%s' already exists.", site))
+		if strings.EqualFold(e.Site, site) && strings.EqualFold(e.Username, username) {
+			ui.PrintError(fmt.Sprintf("An entry for '%s' with username '%s' already exists.", site, username))
 			return nil
 		}
 	}
-
-	username := ui.ReadLine("Username / Email:    ")
 
 	password, err := ui.ReadPassword("Password:            ")
 	if err != nil {
@@ -258,14 +259,15 @@ func performAdd(vaultPassword string, entries []models.Entry) ([]models.Entry, s
 		ui.PrintError("Site name cannot be empty.")
 		return entries, "", nil
 	}
+
+	username := ui.ReadLine("  Username / Email: ")
+
 	for _, e := range entries {
-		if strings.EqualFold(e.Site, site) {
-			ui.PrintError(fmt.Sprintf("'%s' already exists.", site))
+		if strings.EqualFold(e.Site, site) && strings.EqualFold(e.Username, username) {
+			ui.PrintError(fmt.Sprintf("'%s' with username '%s' already exists.", site, username))
 			return entries, "", nil
 		}
 	}
-
-	username := ui.ReadLine("  Username / Email: ")
 	entryPass, err := ui.ReadPassword("  Password: ")
 	if err != nil {
 		return entries, "", err
@@ -319,6 +321,14 @@ func performEdit(vaultPassword string, entries []models.Entry, idx int) ([]model
 		newUsername = e.Username
 	}
 
+	if !strings.EqualFold(newUsername, e.Username) {
+		for i, other := range entries {
+			if i != idx && strings.EqualFold(other.Site, e.Site) && strings.EqualFold(other.Username, newUsername) {
+				return entries, fmt.Errorf("an entry for '%s' with username '%s' already exists", e.Site, newUsername)
+			}
+		}
+	}
+
 	newPass, err := ui.ReadPassword("  New password (Enter to keep): ")
 	if err != nil {
 		return entries, err
@@ -361,8 +371,10 @@ func Get(site string) error {
 	}
 	fmt.Println()
 
+	found := false
 	for _, e := range entries {
 		if strings.EqualFold(e.Site, site) {
+			found = true
 			content := ui.LabelStyle.Render("Site:     ") + ui.ValueStyle.Render(e.Site) + "\n" +
 				ui.LabelStyle.Render("Username: ") + ui.ValueStyle.Render(e.Username) + "\n" +
 				ui.LabelStyle.Render("Password: ") + ui.ValueStyle.Render(e.Password)
@@ -376,11 +388,12 @@ func Get(site string) error {
 				}
 			}
 			fmt.Println(ui.BoxStyle.Render(content))
-			return nil
 		}
 	}
 
-	ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+	if !found {
+		ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+	}
 	return nil
 }
 
@@ -393,18 +406,40 @@ func Edit(site string) error {
 	}
 	fmt.Println()
 
+	var matches []int
 	for i, e := range entries {
 		if strings.EqualFold(e.Site, site) {
-			if _, err := performEdit(vaultPassword, entries, i); err != nil {
-				ui.PrintError(err.Error())
-				return nil
-			}
-			ui.PrintSuccess(fmt.Sprintf("'%s' updated.", e.Site))
-			return nil
+			matches = append(matches, i)
 		}
 	}
 
-	ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+	if len(matches) == 0 {
+		ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+		return nil
+	}
+
+	idx := matches[0]
+	if len(matches) > 1 {
+		fmt.Println(ui.SubtleStyle.Render(fmt.Sprintf("  Multiple accounts for '%s':", site)))
+		fmt.Println()
+		for i, mi := range matches {
+			fmt.Println(ui.LabelStyle.Render(fmt.Sprintf("  %d. ", i+1)) + ui.ValueStyle.Render(entries[mi].Username))
+		}
+		fmt.Println()
+		input := ui.ReadLine("  Select account (number): ")
+		n, parseErr := strconv.Atoi(strings.TrimSpace(input))
+		if parseErr != nil || n < 1 || n > len(matches) {
+			ui.PrintError("Invalid selection.")
+			return nil
+		}
+		idx = matches[n-1]
+	}
+
+	if _, err := performEdit(vaultPassword, entries, idx); err != nil {
+		ui.PrintError(err.Error())
+		return nil
+	}
+	ui.PrintSuccess(fmt.Sprintf("'%s' updated.", entries[idx].Site))
 	return nil
 }
 
@@ -417,22 +452,45 @@ func Delete(site string) error {
 	}
 	fmt.Println()
 
+	var matches []int
 	for i, e := range entries {
 		if strings.EqualFold(e.Site, site) {
-			if !ui.Confirm(fmt.Sprintf("  Delete entry for '%s'?", e.Site)) {
-				fmt.Println(ui.SubtleStyle.Render("  Aborted."))
-				return nil
-			}
-			entries = append(entries[:i], entries[i+1:]...)
-			if err := storage.Save(vaultPassword, entries); err != nil {
-				return err
-			}
-			fmt.Println()
-			ui.PrintSuccess(fmt.Sprintf("'%s' deleted.", e.Site))
-			return nil
+			matches = append(matches, i)
 		}
 	}
 
-	ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+	if len(matches) == 0 {
+		ui.PrintError(fmt.Sprintf("No entry found for '%s'.", site))
+		return nil
+	}
+
+	idx := matches[0]
+	if len(matches) > 1 {
+		fmt.Println(ui.SubtleStyle.Render(fmt.Sprintf("  Multiple accounts for '%s':", site)))
+		fmt.Println()
+		for i, mi := range matches {
+			fmt.Println(ui.LabelStyle.Render(fmt.Sprintf("  %d. ", i+1)) + ui.ValueStyle.Render(entries[mi].Username))
+		}
+		fmt.Println()
+		input := ui.ReadLine("  Select account (number): ")
+		n, parseErr := strconv.Atoi(strings.TrimSpace(input))
+		if parseErr != nil || n < 1 || n > len(matches) {
+			ui.PrintError("Invalid selection.")
+			return nil
+		}
+		idx = matches[n-1]
+	}
+
+	e := entries[idx]
+	if !ui.Confirm(fmt.Sprintf("  Delete '%s' @ %s?", e.Username, e.Site)) {
+		fmt.Println(ui.SubtleStyle.Render("  Aborted."))
+		return nil
+	}
+	entries = append(entries[:idx], entries[idx+1:]...)
+	if err := storage.Save(vaultPassword, entries); err != nil {
+		return err
+	}
+	fmt.Println()
+	ui.PrintSuccess(fmt.Sprintf("'%s' @ %s deleted.", e.Username, e.Site))
 	return nil
 }

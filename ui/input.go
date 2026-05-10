@@ -114,16 +114,34 @@ func PrintBanner() {
 		Align(lipgloss.Center).
 		Render(artBlock + "\n\n" + tagline + "\n" + meta)
 
-	box := lipgloss.NewStyle().
+	termWidth, _, err := term.GetSize(uintptr(syscall.Stdout))
+	if err != nil || termWidth <= 0 {
+		termWidth = 80
+	}
+
+	boxStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(1, 3).
-		Margin(1, 0).
-		Render(inner)
+		MarginTop(1).
+		MarginBottom(1)
 
+	boxWidth := lipgloss.Width(boxStyle.Render(inner))
+	leftPad := (termWidth - boxWidth) / 2
+	if leftPad < 0 {
+		leftPad = 0
+	}
+	box := boxStyle.MarginLeft(leftPad).Render(inner)
+
+	accentText := "◈  All data stored locally. Nothing leaves your machine.  ◈"
+	accentPad := (termWidth - lipgloss.Width(accentText)) / 2
+	if accentPad < 0 {
+		accentPad = 0
+	}
 	accent := lipgloss.NewStyle().
 		Foreground(ColorAccent).
-		Render("  ◈  All data stored locally. Nothing leaves your machine.  ◈")
+		MarginLeft(accentPad).
+		Render(accentText)
 
 	fmt.Println(box)
 	fmt.Println(accent)
